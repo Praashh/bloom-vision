@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import Firecrawl from '@mendable/firecrawl-js';
+import { DeepcrawlApp } from 'deepcrawl';
 import { supabase } from '@/lib/supabase';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/db';
 
-const firecrawl = new Firecrawl({
-    apiKey: process.env.FIRECRAWLER_API_KEY as string
+const client = new DeepcrawlApp({
+    apiKey: process.env.DEEPCRAWLER_API_KEY!,
 });
 
 const MODELID = process.env.NEXT_PUBLIC_MODELID as string;
@@ -17,16 +17,32 @@ export async function POST(req: Request) {
     if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const userCredits = await prisma.user.findUnique({
-        where: {
-            id: session.user.id
-        },
-        select: {
-            credit: true
-        }
-    })
-    if (userCredits!.credit <= 0) {
-        return NextResponse.json({ error: 'No credits left' }, { status: 400 });
+
+    let deductResult: { count: number };
+
+    try {
+        deductResult = await prisma.user.updateMany({
+            where: {
+                id: session.user.id
+            },
+            data: {
+                credit: {
+                    decrement: 1
+                }
+            }
+        });
+    } catch (error) {
+        console.error("[Generate] Credit deduction DB error:", error);
+        return NextResponse.json(
+            { error: "Internal Server Error" },
+            { status: 500 },
+        );
+    }
+    if (deductResult.count === 0) {
+        return NextResponse.json(
+            { error: "Insufficient Credits" },
+            { status: 400 }
+        )
     }
     try {
         const { url } = await req.json();
@@ -37,37 +53,33 @@ export async function POST(req: Request) {
 
         console.log('Scraping URL:', url);
 
-        const extractResult = await firecrawl.extract({
-            urls: [url],
-            prompt: "Analyze the theme of this website and generate a highly detailed image prompt for a marketing image.",
-            schema: {
-                type: "object",
-                properties: {
-                    company_name: { type: "string" },
-                    brand_colors: { type: "string" },
-                    visual_style: { type: "string" },
-                    description: { type: "string" },
-                    suggested_image_prompt: {
-                        type: "string",
-                        description: "A highly detailed prompt for a high-quality marketing image that represents the brand's theme and purpose. Mention colors, mood, and objects."
-                    }
-                },
-                required: ["company_name", "suggested_image_prompt"]
-            }
+        const readResult = await client.readUrl(url, {
+            markdown: true,
+            metadata: true,
         });
 
-        if (!extractResult.success) {
-            throw new Error(`Failed to extract website theme: ${extractResult.error}`);
+        if (!readResult.success) {
+            throw new Error(`Failed to extract website theme: ${readResult.error}`);
         }
 
-        const brandData = extractResult.data as {
-            company_name: string;
-            brand_colors: string;
-            visual_style: string;
-            description: string;
-            suggested_image_prompt: string;
+        const pageMarkdown = readResult.markdown || '';
+        const pageTitle = readResult.metadata?.title || readResult.title || '';
+        const pageDescription = readResult.metadata?.description || readResult.description || '';
+
+        const brandData = {
+            company_name: pageTitle,
+            core_product_or_service: pageDescription,
+            main_slogan_or_heading: pageTitle,
+            target_audience: '',
+            brand_colors: '',
+            visual_style_and_tone: '',
+            key_visual_elements: [] as string[],
+            suggested_image_prompt: '',
         };
-        const prompt = brandData?.suggested_image_prompt;
+
+        // Build a detailed image generation prompt from the scraped page content
+        const prompt = `A highly detailed, hyper-realistic professional marketing banner for "${pageTitle}". ${pageDescription ? `The brand is about: ${pageDescription}.` : ''} The design should prominently display the text "${pageTitle}" in bold, modern typography. Use a premium, polished aesthetic with cinematic lighting, elegant composition, and high-end photographic details. The visual style should match the brand's tone conveyed by the website content. Make it look like a world-class advertising campaign visual. Website context for reference: ${pageMarkdown.slice(0, 500)}`;
+        brandData.suggested_image_prompt = prompt;
 
         if (!prompt) {
             throw new Error('Could not generate an image prompt from the website theme.');
@@ -161,6 +173,19 @@ export async function POST(req: Request) {
 
     } catch (error: unknown) {
         console.error('Error in /api/generate:', error);
+
+        try {
+            await prisma.user.update({
+                where: { id: session.user.id },
+                data: { credit: { increment: 1 } },
+            });
+        } catch (refundError) {
+            console.error(
+                "[Generate] CRITICAL: failed to refund credit for user",
+                session.user.id,
+                refundError
+            );
+        }
         return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
     }
 }

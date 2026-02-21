@@ -9,27 +9,22 @@ import {
   ArrowRight,
   Sparkle,
   Globe,
-  Infinity as PhosphorInfinity
+  Infinity as PhosphorInfinity,
+  Coin,
 } from "@phosphor-icons/react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 export default function BloomGenerator() {
   const [url, setUrl] = useState("");
+  const { data: session, update } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
-  const [brandInfo, setBrandInfo] = useState<{
-    company_name: string;
-    brand_colors: string;
-    visual_style: string;
-    description: string;
-    suggested_image_prompt: string;
-  } | null>(null);
 
   const handleGenerate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -37,7 +32,10 @@ export default function BloomGenerator() {
 
     setIsLoading(true);
     setCurrentImage(null);
-    setBrandInfo(null);
+
+    const toastId = toast.loading("Analyzing your brand & generating asset...", {
+      description: "This may take a moment.",
+    });
 
     try {
       const res = await fetch("/api/generate", {
@@ -49,14 +47,26 @@ export default function BloomGenerator() {
       const data = await res.json();
       if (data.success) {
         setCurrentImage(data.imageUrl);
-        setBrandInfo(data.brandInfo);
+        update();
+        toast.success("Asset generated successfully!", {
+          id: toastId,
+          description: "Your brand visual is ready to download.",
+        });
       } else {
         console.error("Generation failed", data);
-        alert("Error: " + (data.error || "Generation failed"));
+        toast.error(data.error || "Generation failed", {
+          id: toastId,
+          description: data.error === "Insufficient Credits"
+            ? "You've run out of credits. Please upgrade to continue."
+            : "Something went wrong during generation. Please try again.",
+        });
       }
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      toast.error("Something went wrong", {
+        id: toastId,
+        description: "Could not connect to the server. Please check your connection and try again.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +96,11 @@ export default function BloomGenerator() {
             <span className="text-xl font-bold tracking-tight text-white">Bloom</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/dashboard">
+            <Button>
+              <Coin className="w-4 h-4" />
+              {session?.user.credit} credits
+            </Button>
+            <Link href="/history">
               <Button variant="outline" className="rounded-xl bg-background/20 backdrop-blur-md border-white/10 hover:bg-background/40 transition-all">
                 <ClockCounterClockwise className="w-4 h-4 mr-2" />
                 History
@@ -139,7 +153,7 @@ export default function BloomGenerator() {
                   {isLoading ? (
                     <>
                       <CircleNotch className="w-5 h-5 animate-spin mr-2" />
-                      Bloom is Crawling...
+                      Bloom is generating...
                     </>
                   ) : (
                     <>
@@ -160,104 +174,43 @@ export default function BloomGenerator() {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
-              className="mt-16 max-w-5xl mx-auto"
+              className="mt-16 max-w-3xl mx-auto"
             >
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
-                <Card className="md:col-span-7 bg-zinc-950/40 border-white/5 backdrop-blur-xl rounded-[2rem] overflow-hidden shadow-2xl">
-                  <CardContent className="p-4 h-full">
-                    <div className="aspect-square w-full relative bg-zinc-900/50 rounded-2xl overflow-hidden border border-white/5">
-                      {isLoading ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-6">
-                          <div className="relative h-24 w-24">
-                            <div className="absolute inset-0 border-[3px] border-indigo-500/10 rounded-full" />
-                            <Sparkle className="absolute inset-0 m-auto w-8 h-8 text-white animate-pulse" />
-                          </div>
-                          <div className="space-y-2 text-center">
-                            <p className="text-xl font-medium text-white">Analyzing your brand...</p>
-                            <p className="text-sm text-zinc-400">Our AI is brewing something magical</p>
-                          </div>
+              <Card className="bg-zinc-950/40 border-white/5 backdrop-blur-xl rounded-[2rem] overflow-hidden shadow-2xl">
+                <CardContent className="p-4">
+                  <div className="aspect-square w-full relative bg-zinc-900/50 rounded-2xl overflow-hidden border border-white/5">
+                    {isLoading ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center space-y-6">
+                        <div className="relative h-24 w-24">
+                          <div className="absolute inset-0 border-[3px] border-indigo-500/10 rounded-full" />
+                          <Sparkle className="absolute inset-0 m-auto w-8 h-8 text-white animate-pulse" />
                         </div>
-                      ) : currentImage && (
-                        <>
-                          <Image
-                            src={currentImage}
-                            alt={brandInfo?.company_name || "Marketing Image"}
-                            fill
-                            className="object-contain"
-                            unoptimized
-                          />
-                          <div className="absolute bottom-6 right-6 flex gap-3">
-                            <Button asChild size="icon" className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 text-white transition-all">
-                              <a href={currentImage} download>
-                                <DownloadSimple className="w-6 h-6" />
-                              </a>
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="md:col-span-5 flex flex-col gap-6">
-                  {isLoading ? (
-                    <Card className="h-full bg-zinc-950/40 border-white/5 backdrop-blur-xl rounded-[2rem] p-8 space-y-8">
-                      <div className="space-y-3">
-                        <Skeleton className="h-4 w-20 bg-white/5" />
-                        <Skeleton className="h-10 w-3/4 bg-white/10" />
-                      </div>
-                      <div className="space-y-3">
-                        <Skeleton className="h-4 w-24 bg-white/5" />
-                        <Skeleton className="h-6 w-full bg-white/5" />
-                        <Skeleton className="h-6 w-5/6 bg-white/5" />
-                      </div>
-                      <div className="space-y-3 pt-6 border-t border-white/5">
-                        <Skeleton className="h-4 w-32 bg-white/5" />
-                        <Skeleton className="h-16 w-full bg-white/5" />
-                      </div>
-                    </Card>
-                  ) : brandInfo && (
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="h-full bg-zinc-950/40 border-white/5 backdrop-blur-xl rounded-[2rem] p-8 space-y-8 flex flex-col justify-between"
-                    >
-                      <div className="space-y-6">
-                        <div>
-                          <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400 border-none mb-3">Company</Badge>
-                          <h2 className="text-3xl font-bold text-white">{brandInfo.company_name}</h2>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Visual Theme</p>
-                            <p className="text-sm text-zinc-200 font-medium">{brandInfo.visual_style}</p>
-                          </div>
-                          <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Brand Colors</p>
-                            <p className="text-sm text-zinc-200 font-medium">{brandInfo.brand_colors}</p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">Description</p>
-                          <p className="text-zinc-400 text-sm leading-relaxed line-clamp-4">{brandInfo.description}</p>
+                        <div className="space-y-2 text-center">
+                          <p className="text-xl font-medium text-white">Analyzing your brand...</p>
+                          <p className="text-sm text-zinc-400">Our AI is brewing something magical</p>
                         </div>
                       </div>
-
-                      <div className="pt-6 border-t border-white/5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Sparkle className="w-3 h-3 text-indigo-400" weight="duotone" />
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">AI Prompt Generation</p>
+                    ) : currentImage && (
+                      <>
+                        <Image
+                          src={currentImage}
+                          alt="Generated Marketing Image"
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                        <div className="absolute bottom-6 right-6 flex gap-3">
+                          <Button asChild size="icon" className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 text-white transition-all">
+                            <a href={currentImage} download>
+                              <DownloadSimple className="w-6 h-6" />
+                            </a>
+                          </Button>
                         </div>
-                        <div className="p-4 bg-indigo-500/5 rounded-2xl border border-indigo-500/10">
-                          <p className="text-zinc-200 text-xs italic leading-relaxed">{brandInfo.suggested_image_prompt}</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-              </div>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
           )}
         </AnimatePresence>
