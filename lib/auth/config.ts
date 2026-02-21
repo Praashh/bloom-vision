@@ -10,7 +10,17 @@ declare module 'next-auth' {
             name: string;
             email: string;
             image: string;
+            credits: number
         } & DefaultSession['user'];
+    }
+    interface User {
+        credit?: number
+    }
+}
+
+declare module "next-auth/jwt" {
+    interface JWT {
+        credits?: number
     }
 }
 
@@ -32,6 +42,7 @@ export const authConfig = {
                 token.id = user.id;
                 token.email = user.email;
                 token.image = user.image;
+                token.credits = user.credit
             }
             if (!token.sub) return token;
             const existingUser = await prisma.user.findUnique({
@@ -41,6 +52,7 @@ export const authConfig = {
             });
             if (existingUser) {
                 token.image = existingUser.image;
+                token.credits = existingUser.credit;
             }
             return token;
         },
@@ -49,6 +61,7 @@ export const authConfig = {
                 session.user.id = token.id as string;
                 session.user.email = token.email as string;
                 session.user.image = token.image as string;
+                session.user.credit = token.credits as number;
             }
             return session;
         },
