@@ -23,7 +23,8 @@ export async function POST(req: Request) {
     try {
         deductResult = await prisma.user.updateMany({
             where: {
-                id: session.user.id
+                id: session.user.id,
+                credit: { gt: 0 }
             },
             data: {
                 credit: {

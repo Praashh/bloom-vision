@@ -11,20 +11,32 @@ import {
   Globe,
   Infinity as PhosphorInfinity,
   Coin,
+  EnvelopeSimple,
+  CurrencyDollar,
+  Lightning,
 } from "@phosphor-icons/react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import BuyMeCoffee from "@/components/ui/buy-me-coffee";
 
 export default function BloomGenerator() {
   const [url, setUrl] = useState("");
   const { data: session, update } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [showCreditDialog, setShowCreditDialog] = useState(false);
 
   const handleGenerate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -54,12 +66,18 @@ export default function BloomGenerator() {
         });
       } else {
         console.error("Generation failed", data);
-        toast.error(data.error || "Generation failed", {
-          id: toastId,
-          description: data.error === "Insufficient Credits"
-            ? "You've run out of credits. Please upgrade to continue."
-            : "Something went wrong during generation. Please try again.",
-        });
+        if (data.error === "Insufficient Credits") {
+          toast.error("Insufficient Credits", {
+            id: toastId,
+            description: "You've run out of credits. Please support us to get more!",
+          });
+          setShowCreditDialog(true);
+        } else {
+          toast.error(data.error || "Generation failed", {
+            id: toastId,
+            description: "Something went wrong during generation. Please try again.",
+          });
+        }
       }
     } catch (err) {
       console.error(err);
@@ -214,6 +232,75 @@ export default function BloomGenerator() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Credit Limit Dialog */}
+        <Dialog open={showCreditDialog} onOpenChange={setShowCreditDialog}>
+          <DialogContent className="sm:max-w-lg bg-zinc-950/95 backdrop-blur-2xl border-white/10 text-white rounded-2xl shadow-2xl">
+            <DialogHeader className="text-center items-center">
+              <div className="mx-auto mb-2 w-14 h-14 rounded-2xl bg-linear-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/20 flex items-center justify-center">
+                <Coin className="w-7 h-7 text-amber-400" weight="duotone" />
+              </div>
+              <DialogTitle className="text-2xl font-bold text-white">
+                You&apos;re Out of Credits!
+              </DialogTitle>
+              <DialogDescription className="text-zinc-400 text-base mt-1">
+                Please support us by buying a coffee to get more credits!
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col items-center gap-6 py-4">
+              {/* BuyMeCoffee Widget */}
+              <BuyMeCoffee
+                classname="w-56 h-56 rounded-2xl border-white/10 my-0 py-8"
+              />
+
+              {/* Pricing Info */}
+              <div className="w-full space-y-3">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <CurrencyDollar className="w-5 h-5 text-emerald-400" weight="bold" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      $5 = 20 Credits
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      Each generation costs 1 credit
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+                    <Lightning className="w-5 h-5 text-violet-400" weight="bold" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      Note: This is a paid feature
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      Support us to keep Bloom running
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Email */}
+              <div className="flex items-center gap-2 text-sm text-white">
+                <EnvelopeSimple className="w-4 h-4" />
+                <span>
+                  After sponsoring, mail at{" "}
+                  <a
+                    href="mailto:hello.praash@gmail.com"
+                    className="text-white hover:underline font-medium "
+                  >
+                    hello.praash@gmail.com
+                  </a>
+                </span>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Footer info/Disclaimer */}
         <footer className="mt-24 pt-12 border-t border-white/5 text-center">
