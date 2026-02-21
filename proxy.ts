@@ -12,7 +12,7 @@ export async function proxy(req: NextRequest) {
     });
 
     const isAuthRoute = pathname === '/signin';
-    const isProtectedRoute = pathname.startsWith('/history') || pathname.startsWith('/api/generate') || pathname.startsWith("/api/images");
+    const isProtectedRoute = pathname.startsWith('/history') || pathname.startsWith('/api/generate') || pathname.startsWith("/api/images") || pathname;
 
     if (isAuthRoute) {
         if (token) {
@@ -37,4 +37,4 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
 }
 
-export const config = { matcher: ['/history', '/api/generate', '/api/images', '/signin'] };
+export const config = { matcher: ['/history', '/api/generate', '/api/images', '/signin', "/"] };
