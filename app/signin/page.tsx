@@ -48,9 +48,6 @@ function SignInContent() {
                         transition={{ delay: 0.5, duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
                     >
                         <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/10">
-                                <Sparkle size={22} weight="duotone" className="text-violet-400" />
-                            </div>
                             <span className="text-white/90 text-xl font-bold tracking-tight">
                                 Bloom Vision
                             </span>
@@ -76,9 +73,7 @@ function SignInContent() {
                 >
                     {/* Mobile branding */}
                     <div className="flex lg:hidden items-center gap-3 mb-10">
-                        <div className="w-10 h-10 bg-white/5 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/10">
-                            <Sparkle size={22} weight="duotone" className="text-violet-400" />
-                        </div>
+
                         <span className="text-white/90 text-xl font-bold tracking-tight">
                             Bloom Vision
                         </span>
@@ -158,37 +153,6 @@ function SignInContent() {
                             We use Google for secure authentication. No passwords needed — just your Google account.
                         </p>
                     </motion.div>
-
-                    {/* Trust indicators */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.7, duration: 0.6 }}
-                        className="mt-8 flex items-center justify-center gap-6"
-                    >
-                        <div className="flex items-center gap-2 text-white/20 text-xs">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/60" />
-                            <span>256-bit SSL</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-white/20 text-xs">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/60" />
-                            <span>OAuth 2.0</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-white/20 text-xs">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/60" />
-                            <span>GDPR Compliant</span>
-                        </div>
-                    </motion.div>
-
-                    {/* Footer */}
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.8, duration: 0.6 }}
-                        className="mt-8 text-center text-white/15 text-xs"
-                    >
-                        By signing in, you agree to our Terms of Service and Privacy Policy.
-                    </motion.p>
                 </motion.div>
             </div>
         </div>
